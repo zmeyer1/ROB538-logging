@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 from typing import List, Tuple
 
-EPSILON = 0.9
+EPSILON = 0.8
 MAX_SPEED = 1
 ALPHA = 0.95  # learning rate
 GAMMA = 0.2  # discount factor
@@ -77,22 +77,22 @@ class RoverDomainVel:
 
         for rover_id in range(self.args.num_agents):
 
-            magnitude = 0.5 * (joint_action[rover_id][0] + 1)  # [-1,1] --> [0,1]
-            self.rover_vel[rover_id][0] += magnitude
+            magnitude = joint_action[rover_id][0]
+            self.rover_vel[rover_id][0] = magnitude
 
             joint_action[rover_id][1] /= 2.0  # Theta (bearing constrained to be within 90 degree turn from heading)
-            self.rover_vel[rover_id][1] += joint_action[rover_id][1]
+            self.rover_vel[rover_id][1] = joint_action[rover_id][1]
 
             # Constrain
-            if self.rover_vel[rover_id][0] < 0:
-                self.rover_vel[rover_id][0] = 0.0
+            if self.rover_vel[rover_id][0] < -1:
+                self.rover_vel[rover_id][0] = -1
             elif self.rover_vel[rover_id][0] > 1:
                 self.rover_vel[rover_id][0] = 1.0
 
-            if self.rover_vel[rover_id][1] < 0.5:
-                self.rover_vel[rover_id][0] = 0.5
+            if self.rover_vel[rover_id][1] < -0.5:
+                self.rover_vel[rover_id][1] = -0.5
             elif self.rover_vel[rover_id][1] > 0.5:
-                self.rover_vel[rover_id][0] = 0.5
+                self.rover_vel[rover_id][1] = 0.5
 
             theta = self.rover_vel[rover_id][1] * 180 + self.rover_pos[rover_id][2]
             if theta > 360:
@@ -106,7 +106,6 @@ class RoverDomainVel:
             y = self.rover_vel[rover_id][0] * math.sin(math.radians(theta))
             self.rover_pos[rover_id][0] += x
             self.rover_pos[rover_id][1] += y
-
             # Log
             self.rover_path[rover_id].append(
                 (self.rover_pos[rover_id][0], self.rover_pos[rover_id][1], self.rover_pos[rover_id][2]))
@@ -455,7 +454,7 @@ class RoverDomainVel:
 # need: agent class with policy
 class RoverAgent:
     def __init__(self, args):
-        self.policy = 10*np.ones((args.dim_x*10, args.dim_y*10, 4))
+        self.policy = -10*np.ones((args.dim_x, args.dim_y, 4))
         self.args=args
 
     def get_action(
@@ -465,25 +464,49 @@ class RoverAgent:
         ) -> Tuple[List[float],int]:
         
         position=rover_pos.copy()
-        self.bound_position(position)
+        position=np.int16(position)
+        #self.bound_position(position)
+
         rewards = self.policy[position[0], position[1], :]
         val = random.random()
+        actions=list(self.valid_actions(position))
         if val < EPSILON:
+            for i, reward in enumerate(rewards):
+                if i not in actions:
+                    rewards[i]=-np.inf
             best_actions = np.where(rewards == max(rewards))[0]
             direction = random.choice(best_actions)
         else:
-            direction = random.choice(range(4))
-        
-        # right, up, left, down
+            direction = random.choice(actions)
+
+        # IN VIS: down, right, up, left
+        # positive change in x is down
         current_heading = rover_pos[2] # in degrees
+        delta_theta =  direction * 90 -current_heading
+        delta_theta %= 360
+        control = {0:0, 90:1, 180:0, 270:-1}[delta_theta]
 
-        delta_theta = direction * 90 - current_heading
-
-        #TODO add the logic here
-
-        delta_magnitude = MAX_SPEED - rover_vel[0]
-        action = [delta_magnitude, delta_theta]
+        velocity = 1 if delta_theta != 180 else -1
+        action = [velocity, control]
         return action, direction
+
+    def valid_actions(self, position):
+        actions={0,1,2,3}
+        if position[0]==0:
+            available_actions=set([0,1,3])
+            actions=actions.intersection(available_actions)
+        elif position[0]==self.args.dim_x-1:
+            available_actions=set([1,2,3])
+            actions=actions.intersection(available_actions)
+        if position[1]==0:
+            available_actions=set([0,1,2])
+            actions = actions.intersection(available_actions)
+        elif position[1]==self.args.dim_y-1:
+            available_actions=set([0,2,3])
+            actions = actions.intersection(available_actions)
+        return actions
+
+
 
     def update_policy(
             self,
@@ -491,8 +514,9 @@ class RoverAgent:
             position: List[int],
             direction: int,
         ) -> None:
-        tile_change = {-2: [1, 0], -1: [0, 1], 0: [-1, 0], 1: [0, -1]}[direction]
+        tile_change = {0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1]}[direction]
         position=[position[0] + tile_change[0],position[1] + tile_change[1]]
+
         self.bound_position(position)
         Q_max = max(self.policy[position[0] , position[1] , :])
         current_policy = self.policy[position[0], position[1], direction]

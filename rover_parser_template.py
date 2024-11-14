@@ -1,10 +1,10 @@
-import yaml, sys
+import yaml, sys, os
 import rover_domain_python
 import numpy as np
 from typing import List, Tuple
 
 NUM_ITERATIONS=500
-EPOCHS=3
+EPOCHS=5
 
 # https://stackoverflow.com/questions/4984647/accessing-dict-keys-like-an-attribute
 class AttrDict(dict):
@@ -45,7 +45,10 @@ if __name__ == "__main__":
             args = AttrDict(yaml.safe_load(file))
     except IndexError:
         print(f"Usage: python3 {sys.argv[0]} [yaml_file]")
-
+        print("Using default yaml")
+        filename = os.path.join(os.getcwd(), 'ROB538-logging/rover_domain.yaml')
+        with open(filename, 'r') as file:
+            args = AttrDict(yaml.safe_load(file))
 
 
     sim = rover_domain_python.RoverDomainVel(args)

@@ -1,6 +1,6 @@
-num_agents: 1 # number of agents
+num_agents: 5 # number of agents
 num_poi: 10 # number of POIs
-harvest_period: 3 # number of 'harvests' to consume POI
+harvest_period: 1 # number of 'harvests' to consume POI
 angle_res: 1 # Angle resolution (deg)
 obs_radius: 3 # observability radius
 ep_len: 100 # epoch length?
@@ -9,8 +9,8 @@ act_dist: 1 # action distance
 env_choice: 'rover_tight' # 'rover_loose' or 'rover_tight' or 'rover_trap'
 is_lsg: False #'Local subsume Global?'
 global_w: 1 # global reward weight?
-dim_x: 10 # width of simulation
-dim_y: 10 # height of simulation
+dim_x: 20 # width of simulation
+dim_y: 20 # height of simulation
 coupling: 1 # int, number of coupling
 poi_rand: False # on reset, randomly spread the POIs
 is_proxim_rew: False # boolean, is proximity reward
