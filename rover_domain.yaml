@@ -9,8 +9,8 @@ act_dist: 1 # action distance
 env_choice: 'rover_tight' # 'rover_loose' or 'rover_tight' or 'rover_trap'
 is_lsg: False #'Local subsume Global?'
 global_w: 1 # global reward weight?
-dim_x: 20 # width of simulation
-dim_y: 20 # height of simulation
+dim_x: 10 # width of simulation
+dim_y: 10 # height of simulation
 coupling: 1 # int, number of coupling
 poi_rand: False # on reset, randomly spread the POIs
 is_proxim_rew: False # boolean, is proximity reward

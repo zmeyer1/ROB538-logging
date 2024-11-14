@@ -3,9 +3,10 @@ from random import randint
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from typing import List, Tuple
 
 EPSILON = 0.9
-MAX_SPEED = 0.5
+MAX_SPEED = 1
 ALPHA = 0.95  # learning rate
 GAMMA = 0.2  # discount factor
 
@@ -454,29 +455,42 @@ class RoverDomainVel:
 # need: agent class with policy
 class RoverAgent:
     def __init__(self, args):
-        self.policy = np.ones((args.dim_x, args.dim_y, 4))*10
+        self.policy = 10*np.ones((args.dim_x*10, args.dim_y*10, 4))
         self.args=args
 
-    def get_action(self, rover_pos, rover_vel):
+    def get_action(
+            self, 
+            rover_pos: List[float], 
+            rover_vel: List[float],
+        ) -> Tuple[List[float],int]:
+        
         position=rover_pos.copy()
         self.bound_position(position)
         rewards = self.policy[position[0], position[1], :]
         val = random.random()
         if val < EPSILON:
             best_actions = np.where(rewards == max(rewards))[0]
-            direction = random.choice(best_actions)-2
+            direction = random.choice(best_actions)
         else:
-            direction = random.choice(range(4))-2
-        direction=1
+            direction = random.choice(range(4))
+        
         # right, up, left, down
-        current_heading = rover_pos[2]
+        current_heading = rover_pos[2] # in degrees
+
         delta_theta = direction * 90 - current_heading
+
+        #TODO add the logic here
 
         delta_magnitude = MAX_SPEED - rover_vel[0]
         action = [delta_magnitude, delta_theta]
         return action, direction
 
-    def update_policy(self, reward, position, direction):
+    def update_policy(
+            self,
+            reward: float,
+            position: List[int],
+            direction: int,
+        ) -> None:
         tile_change = {-2: [1, 0], -1: [0, 1], 0: [-1, 0], 1: [0, -1]}[direction]
         position=[position[0] + tile_change[0],position[1] + tile_change[1]]
         self.bound_position(position)
@@ -484,7 +498,10 @@ class RoverAgent:
         current_policy = self.policy[position[0], position[1], direction]
         self.policy[position[0], position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
 
-    def bound_position(self,position):
+    def bound_position(
+            self,
+            position: List[int]
+            ) -> None:
         if position[0]>self.args.dim_x-1:
             position[0]=self.args.dim_x-1
         if position[0] < 0:

@@ -1,8 +1,9 @@
 import yaml, sys
 import rover_domain_python
 import numpy as np
+from typing import List, Tuple
 
-NUM_ITERATIONS=5
+NUM_ITERATIONS=500
 EPOCHS=3
 
 # https://stackoverflow.com/questions/4984647/accessing-dict-keys-like-an-attribute
@@ -10,6 +11,31 @@ class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self  # fight me, I'm not using cmd line arguments
+
+
+def choose_actions(
+        sim: rover_domain_python.RoverDomainVel,
+        agents: List[rover_domain_python.RoverAgent]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+    actions = np.zeros((len(agents), 2))
+    directions = np.zeros(len(agents), dtype=np.int8)
+
+    for i,agent in enumerate(agents):
+        actions[i,:], directions[i] = agent.get_action(sim.rover_pos[i], sim.rover_vel[i])
+
+    return actions, directions
+
+
+def update_policies(
+        sim: rover_domain_python.RoverDomainVel,
+        agents: List[rover_domain_python.RoverAgent],
+        rewards: np.ndarray, # vector of floats of shape (num_agents, )
+        directions: np.ndarray,
+    ) -> None:
+
+    for i,agent in enumerate(agents):
+        position = sim.rover_pos[i][0:2]
+        agent.update_policy(rewards[i], position, directions[i])
 
 
 if __name__ == "__main__":
@@ -20,38 +46,26 @@ if __name__ == "__main__":
     except IndexError:
         print(f"Usage: python3 {sys.argv[0]} [yaml_file]")
 
+
+
     sim = rover_domain_python.RoverDomainVel(args)
-    agents = []
-    for agent in range(args.num_agents):
-        agents.append(rover_domain_python.RoverAgent(args))
+    agents = [rover_domain_python.RoverAgent(args) for _ in range(args.num_agents)]
 
     for k in range(EPOCHS):
         sim.reset()
-        actions = []
-        directions = []
-        positions = []
-        for i, agent in enumerate(agents):
-            action, direction = agent.get_action(sim.rover_pos[i], sim.rover_vel[i])
-            actions.append(action)
-            directions.append(direction)
-            position = sim.rover_pos[i][0:2]
-            positions.append(position)
         for j in range(NUM_ITERATIONS):
-            sim.step(np.array(actions))
-            reward=sim.get_global_reward()-1
-            for i, agent in enumerate(agents):
-                new_position=sim.rover_pos[i][0:2]
+            
+            # select actions
+            actions, directions = choose_actions(sim, agents)
 
-                if int(new_position[0])!=int(positions[i][0]) or int(new_position[1])!=int(positions[i][1]):
-                    agent.update_policy(reward,[int(p) for p in new_position], directions[i])
-                    action, direction = agent.get_action(sim.rover_pos[i], sim.rover_vel[i])
-                    actions[i]=action
-                    directions[i]=direction
-                    print('new square')
-                else:
-                    actions[i][1]= 0
-                print(new_position, actions)
-                positions[i]=new_position
+            # step forward the simulation
+            sim.step(actions)
+
+            # TODO; be smarter here
+            rewards=(sim.get_global_reward()-1)*np.ones(args.num_agents)
+
+            # update the policies
+            update_policies(sim, agents, rewards, directions)
 
     sim.viz()
     print(f"Local Rewards: {sim.get_local_reward()}")
