@@ -3,7 +3,7 @@ import rover_domain_python
 import numpy as np
 from typing import List, Tuple
 
-NUM_ITERATIONS=500
+NUM_ITERATIONS=1000
 EPOCHS=5
 
 # https://stackoverflow.com/questions/4984647/accessing-dict-keys-like-an-attribute
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     except IndexError:
         print(f"Usage: python3 {sys.argv[0]} [yaml_file]")
         print("Using default yaml")
-        filename = os.path.join(os.getcwd(), 'ROB538-logging/rover_domain.yaml')
+        filename = os.path.join(os.getcwd(), 'rover_domain.yaml')
         with open(filename, 'r') as file:
             args = AttrDict(yaml.safe_load(file))
 
@@ -56,6 +56,8 @@ if __name__ == "__main__":
 
     for k in range(EPOCHS):
         sim.reset()
+        for agent in agents:
+            agent.epsilon=0.2
         for j in range(NUM_ITERATIONS):
             
             # select actions
@@ -65,10 +67,13 @@ if __name__ == "__main__":
             sim.step(actions)
 
             # TODO; be smarter here
-            rewards=(sim.get_global_reward()-1)*np.ones(args.num_agents)
+            rewards=(sim.get_global_reward())*np.ones(args.num_agents)
 
             # update the policies
             update_policies(sim, agents, rewards, directions)
 
     sim.viz()
+    policy=agents[0].policy
+    for row in policy:
+        print(row)
     print(f"Local Rewards: {sim.get_local_reward()}")

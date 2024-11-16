@@ -5,7 +5,6 @@ import math
 import matplotlib.pyplot as plt
 from typing import List, Tuple
 
-EPSILON = 0.8
 MAX_SPEED = 1
 ALPHA = 0.95  # learning rate
 GAMMA = 0.2  # discount factor
@@ -31,7 +30,7 @@ class RoverDomainVel:
         self.poi_status = [self.harvest_period for _ in range(
             self.args.num_poi)]  # FORMAT: [poi_id][status] --> [harvest_period --> 0 (observed)] is observed?
         # self.poi_value = [float(i+1) for i in range(self.args.num_poi)]  # FORMAT: [poi_id][value]?
-        self.poi_value = [1.0 for _ in range(self.args.num_poi)]
+        self.poi_value = [30.0 for _ in range(self.args.num_poi)]
         self.poi_visitor_list = [[] for _ in range(self.args.num_poi)]  # FORMAT: [poi_id][visitors]?
 
         # Initialize rover pose container
@@ -454,8 +453,9 @@ class RoverDomainVel:
 # need: agent class with policy
 class RoverAgent:
     def __init__(self, args):
-        self.policy = -10*np.ones((args.dim_x, args.dim_y, 4))
+        self.policy = .5*np.ones((args.dim_x, args.dim_y, 4))
         self.args=args
+        self.epsilon=0.2
 
     def get_action(
             self, 
@@ -470,11 +470,14 @@ class RoverAgent:
         rewards = self.policy[position[0], position[1], :]
         val = random.random()
         actions=list(self.valid_actions(position))
-        if val < EPSILON:
+        if val > self.epsilon:
+            max_val = max([rewards[i] for i in actions])
+            best_actions = []
             for i, reward in enumerate(rewards):
                 if i not in actions:
-                    rewards[i]=-np.inf
-            best_actions = np.where(rewards == max(rewards))[0]
+                    continue
+                if reward == max_val:
+                    best_actions.append(i)
             direction = random.choice(best_actions)
         else:
             direction = random.choice(actions)
@@ -488,6 +491,7 @@ class RoverAgent:
 
         velocity = 1 if delta_theta != 180 else -1
         action = [velocity, control]
+        self.epsilon*=.99
         return action, direction
 
     def valid_actions(self, position):
@@ -519,8 +523,22 @@ class RoverAgent:
 
         self.bound_position(position)
         Q_max = max(self.policy[position[0] , position[1] , :])
+        if abs(Q_max)>100000:
+            print(Q_max)
+
         current_policy = self.policy[position[0], position[1], direction]
+        if math.isnan(ALPHA * (reward + GAMMA * Q_max - current_policy)):
+            print(f"reward: {reward}, Q-max: {Q_max}, Current Policy: {current_policy}")
+            print(f"Possible Q actions: {self.policy[position[0], position[1]]}")
+            print(f"position: {position[0]}, {position[1]}")
+            exit(1)
         self.policy[position[0], position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
+        if math.isnan(self.policy[position[0], position[1], direction]):
+
+            print(f"reward: {reward}, Q-max: {Q_max}, Current Policy: {current_policy}")
+            print(f"Possible Q actions: {self.policy[position[0], position[1]]}")
+            print(f"position: {position[0]}, {position[1]}")
+            exit(2)
 
     def bound_position(
             self,
