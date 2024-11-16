@@ -1,3 +1,4 @@
+import copy
 import random, sys
 from random import randint
 import numpy as np
@@ -6,9 +7,9 @@ import matplotlib.pyplot as plt
 from typing import List, Tuple
 
 MAX_SPEED = 1
-ALPHA = 0.95  # learning rate
+ALPHA = 0.85  # learning rate
 GAMMA = 0.2  # discount factor
-
+POI_VALUE=30
 
 class RoverDomainVel:
 
@@ -30,7 +31,7 @@ class RoverDomainVel:
         self.poi_status = [self.harvest_period for _ in range(
             self.args.num_poi)]  # FORMAT: [poi_id][status] --> [harvest_period --> 0 (observed)] is observed?
         # self.poi_value = [float(i+1) for i in range(self.args.num_poi)]  # FORMAT: [poi_id][value]?
-        self.poi_value = [30.0 for _ in range(self.args.num_poi)]
+        self.poi_value = [POI_VALUE for _ in range(self.args.num_poi)]
         self.poi_visitor_list = [[] for _ in range(self.args.num_poi)]  # FORMAT: [poi_id][visitors]?
 
         # Initialize rover pose container
@@ -52,7 +53,7 @@ class RoverDomainVel:
         self.reset_rover_pos()
         self.rover_vel = [[0.0, 0.0] for _ in range(self.args.num_agents)]
         # self.poi_value = [float(i+1) for i in range(self.args.num_poi)]
-        self.poi_value = [1.0 for _ in range(self.args.num_poi)]
+        self.poi_value = [POI_VALUE for _ in range(self.args.num_poi)]
 
         self.rover_closest_poi = [self.args.dim_x * 2 for _ in range(self.args.num_agents)]
         self.cumulative_local = [0 for _ in range(self.args.num_agents)]
@@ -118,6 +119,9 @@ class RoverDomainVel:
         if self.done: global_reward = self.get_global_reward()
 
         return self.get_joint_state(), self.get_local_reward(), self.done, global_reward
+
+
+
 
     def reset_poi_pos(self):
 
@@ -284,7 +288,7 @@ class RoverDomainVel:
 
         return angle, dist
 
-    def get_local_reward(self):
+    def get_local_reward(self, simulate=False):
         # Update POI's visibility
         poi_visitors = [[] for _ in range(self.args.num_poi)]
         poi_visitor_dist = [[] for _ in range(self.args.num_poi)]
@@ -308,7 +312,8 @@ class RoverDomainVel:
             if self.task_type == 'rover_tight' and len(
                     rovers) >= self.args.coupling or self.task_type == 'rover_loose' and len(
                     rovers) >= 1 or self.task_type == 'rover_trap' and len(rovers) >= 1:
-                self.poi_status[poi_id] -= 1
+                if not simulate:
+                    self.poi_status[poi_id] -= 1
                 self.poi_visitor_list[poi_id] = list(set(self.poi_visitor_list[poi_id] + rovers[:]))
 
             if self.args.is_lsg:  # Local subsume Global?
@@ -453,7 +458,7 @@ class RoverDomainVel:
 # need: agent class with policy
 class RoverAgent:
     def __init__(self, args):
-        self.policy = .5*np.ones((args.dim_x, args.dim_y, 4))
+        self.policy = -.5*np.ones((args.dim_x, args.dim_y, 4))
         self.args=args
         self.epsilon=0.2
 
