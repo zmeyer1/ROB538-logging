@@ -523,27 +523,13 @@ class RoverAgent:
             position: List[int],
             direction: int,
         ) -> None:
-        tile_change = {0: [1, 0], 1: [0, 1], 2: [-1, 0], 3: [0, -1]}[direction]
-        position=[position[0] + tile_change[0],position[1] + tile_change[1]]
-
-        self.bound_position(position)
+        position=np.int16(position)
         Q_max = max(self.policy[position[0] , position[1] , :])
-        if abs(Q_max)>100000:
-            print(Q_max)
 
         current_policy = self.policy[position[0], position[1], direction]
-        if math.isnan(ALPHA * (reward + GAMMA * Q_max - current_policy)):
-            print(f"reward: {reward}, Q-max: {Q_max}, Current Policy: {current_policy}")
-            print(f"Possible Q actions: {self.policy[position[0], position[1]]}")
-            print(f"position: {position[0]}, {position[1]}")
-            exit(1)
-        self.policy[position[0], position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
-        if math.isnan(self.policy[position[0], position[1], direction]):
 
-            print(f"reward: {reward}, Q-max: {Q_max}, Current Policy: {current_policy}")
-            print(f"Possible Q actions: {self.policy[position[0], position[1]]}")
-            print(f"position: {position[0]}, {position[1]}")
-            exit(2)
+        self.policy[position[0], position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
+
 
     def bound_position(
             self,

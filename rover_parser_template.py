@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Tuple
 
 NUM_ITERATIONS = 50
-EPOCHS = 200
+EPOCHS = 20
 
 
 # https://stackoverflow.com/questions/4984647/accessing-dict-keys-like-an-attribute
