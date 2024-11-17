@@ -9,7 +9,8 @@ from typing import List, Tuple
 MAX_SPEED = 1
 ALPHA = 0.85  # learning rate
 GAMMA = 0.2  # discount factor
-POI_VALUE=30
+POI_VALUE=300
+EPSILON=0
 
 class RoverDomainVel:
 
@@ -104,6 +105,7 @@ class RoverDomainVel:
             # Update position
             x = self.rover_vel[rover_id][0] * math.cos(math.radians(theta))
             y = self.rover_vel[rover_id][0] * math.sin(math.radians(theta))
+            print(f"change: {x,y} action: {joint_action}")
             self.rover_pos[rover_id][0] += x
             self.rover_pos[rover_id][1] += y
             # Log
@@ -458,14 +460,15 @@ class RoverDomainVel:
 # need: agent class with policy
 class RoverAgent:
     def __init__(self, args):
-        self.policy = -.5*np.ones((args.dim_x, args.dim_y, 4))
+        self.policy = 5*np.ones((args.dim_x, args.dim_y, 4))
         self.args=args
-        self.epsilon=0.2
+        self.epsilon=EPSILON
 
     def get_action(
             self, 
             rover_pos: List[float], 
             rover_vel: List[float],
+            print_actions:bool=False
         ) -> Tuple[List[float],int]:
         
         position=rover_pos.copy()
@@ -475,6 +478,7 @@ class RoverAgent:
         rewards = self.policy[position[0], position[1], :]
         val = random.random()
         actions=list(self.valid_actions(position))
+
         if val > self.epsilon:
             max_val = max([rewards[i] for i in actions])
             best_actions = []
@@ -483,10 +487,15 @@ class RoverAgent:
                     continue
                 if reward == max_val:
                     best_actions.append(i)
+
             direction = random.choice(best_actions)
         else:
             direction = random.choice(actions)
-
+        print_actions=True
+        if print_actions:
+            print(rewards)
+            print(best_actions)
+            print(direction)
         # IN VIS: down, right, up, left
         # positive change in x is down
         current_heading = rover_pos[2] # in degrees
@@ -501,16 +510,17 @@ class RoverAgent:
 
     def valid_actions(self, position):
         actions={0,1,2,3}
-        if position[0]==0:
+        position=np.int16(np.round(position))
+        if position[0]<=0:
             available_actions=set([0,1,3])
             actions=actions.intersection(available_actions)
-        elif position[0]==self.args.dim_x-1:
+        elif position[0]>=self.args.dim_x-1:
             available_actions=set([1,2,3])
             actions=actions.intersection(available_actions)
-        if position[1]==0:
+        if position[1]<=0:
             available_actions=set([0,1,2])
             actions = actions.intersection(available_actions)
-        elif position[1]==self.args.dim_y-1:
+        elif position[1]>=self.args.dim_y-1:
             available_actions=set([0,2,3])
             actions = actions.intersection(available_actions)
         return actions
@@ -522,13 +532,14 @@ class RoverAgent:
             reward: float,
             position: List[int],
             direction: int,
+
         ) -> None:
-        position=np.int16(position)
-        Q_max = max(self.policy[position[0] , position[1] , :])
-
-        current_policy = self.policy[position[0], position[1], direction]
-
-        self.policy[position[0], position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
+        old_position_delta={0:(-1,0), 1:(0,-1), 2:(1,0), 3:(0,1)}[direction]
+        old_position=np.int16(np.round(position)+np.int16(old_position_delta))
+        Q_max = max(self.policy[old_position[0] , old_position[1] , :])
+        current_policy = self.policy[old_position[0], old_position[1], direction]
+        #print(self.policy[int(position[0]),int(position[1])])
+        self.policy[old_position[0], old_position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
 
 
     def bound_position(

@@ -2,9 +2,11 @@ import yaml, sys, os
 import rover_domain_python
 import numpy as np
 from typing import List, Tuple
+import matplotlib.pyplot as plt
 
-NUM_ITERATIONS = 50
-EPOCHS = 20
+NUM_ITERATIONS = 3000
+EPOCHS = 2
+EPSILON=rover_domain_python.EPSILON
 
 
 # https://stackoverflow.com/questions/4984647/accessing-dict-keys-like-an-attribute
@@ -53,27 +55,30 @@ if __name__ == "__main__":
     sim = rover_domain_python.RoverDomainVel(args)
     agents = [rover_domain_python.RoverAgent(args) for _ in range(args.num_agents)]
 
+    rewards=[]
     for k in range(EPOCHS):
         sim.reset()
         for agent in agents:
-            agent.epsilon = 0.2
+            agent.epsilon = EPSILON
         for j in range(NUM_ITERATIONS):
             # select actions
             actions, directions = choose_actions(sim, agents)
-
+            print( sim.rover_pos)
             # step forward the simulation
-            _, local_rewards, _, _ = sim.step(actions)
+            _, local_rewards, done, _ = sim.step(actions)
             #if any(np.array(local_rewards)>0):
                 #print(local_rewards)
             # update the policies
+            if done:
+                break
             update_policies(sim, agents, local_rewards, directions)
-    policy = agents[0].policy
-    for row in policy:
-        print(np.round(row,1))
 
+        rewards.append(sim.get_global_reward())
+    plt.plot(rewards, '-o')
+
+    print(agents[0].policy)
     sim.viz()
     sim.render()
-    policy = agents[0].policy
-    # for row in policy:
-    #   print(row)
-    print(f"Local Rewards: {sim.get_local_reward()}")
+
+
+
