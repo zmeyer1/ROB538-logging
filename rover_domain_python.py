@@ -74,44 +74,18 @@ class RoverDomainVel:
             return dummy_state, dummy_reward, done, info
 
         self.istep += 1
+
+
         joint_action = joint_action.clip(-1.0, 1.0)
 
         for rover_id in range(self.args.num_agents):
 
-            magnitude = joint_action[rover_id][0]
-            self.rover_vel[rover_id][0] = magnitude
-
-            joint_action[rover_id][1] /= 2.0  # Theta (bearing constrained to be within 90 degree turn from heading)
-            self.rover_vel[rover_id][1] = joint_action[rover_id][1]
-
-            # Constrain
-            if self.rover_vel[rover_id][0] < -1:
-                self.rover_vel[rover_id][0] = -1
-            elif self.rover_vel[rover_id][0] > 1:
-                self.rover_vel[rover_id][0] = 1.0
-
-            if self.rover_vel[rover_id][1] < -0.5:
-                self.rover_vel[rover_id][1] = -0.5
-            elif self.rover_vel[rover_id][1] > 0.5:
-                self.rover_vel[rover_id][1] = 0.5
-
-            theta = self.rover_vel[rover_id][1] * 180 + self.rover_pos[rover_id][2]
-            if theta > 360:
-                theta -= 360
-            elif theta < 0:
-                theta += 360
-            self.rover_pos[rover_id][2] = theta
-
-            # Update position
-            x = self.rover_vel[rover_id][0] * math.cos(math.radians(theta))
-            y = self.rover_vel[rover_id][0] * math.sin(math.radians(theta))
-            print(f"change: {x,y} action: {joint_action}")
-            self.rover_pos[rover_id][0] += x
-            self.rover_pos[rover_id][1] += y
+            self.rover_pos[rover_id][0] += joint_action[rover_id][0]
+            self.rover_pos[rover_id][1] += joint_action[rover_id][1]
             # Log
             self.rover_path[rover_id].append(
                 (self.rover_pos[rover_id][0], self.rover_pos[rover_id][1], self.rover_pos[rover_id][2]))
-            self.action_seq[rover_id].append([magnitude, joint_action[rover_id][1] * 180])
+            self.action_seq[rover_id].append(joint_action[rover_id])
 
         # Compute done
         self.done = int(self.istep >= self.args.ep_len or sum(self.poi_status) == 0)
@@ -498,13 +472,8 @@ class RoverAgent:
             print(direction)
         # IN VIS: down, right, up, left
         # positive change in x is down
-        current_heading = rover_pos[2] # in degrees
-        delta_theta =  direction * 90 -current_heading
-        delta_theta %= 360
-        control = {0:0, 90:1, 180:0, 270:-1}[delta_theta]
+        action = {0:(1,0),1:(0,1),2:(-1,0),3:(0,-1)}[direction]
 
-        velocity = 1 if delta_theta != 180 else -1
-        action = [velocity, control]
         self.epsilon*=.99
         return action, direction
 
@@ -541,19 +510,4 @@ class RoverAgent:
         #print(self.policy[int(position[0]),int(position[1])])
         self.policy[old_position[0], old_position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
 
-
-    def bound_position(
-            self,
-            position: List[int]
-            ) -> None:
-        if position[0]>self.args.dim_x-1:
-            position[0]=self.args.dim_x-1
-        if position[0] < 0:
-            position[0] = 0
-        if position[1]>self.args.dim_y-1:
-            position[1]=self.args.dim_y-1
-        if position[1] < 0:
-            position[1] = 0
-        position[0]=int(position[0])
-        position[1]=int(position[1])
 

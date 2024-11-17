@@ -5,7 +5,7 @@ from typing import List, Tuple
 import matplotlib.pyplot as plt
 
 NUM_ITERATIONS = 3000
-EPOCHS = 2
+EPOCHS = 5
 EPSILON=rover_domain_python.EPSILON
 
 
