@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from typing import List, Tuple
 
 MAX_SPEED = 1
-ALPHA = 0.85  # learning rate
+ALPHA = 0.95  # learning rate
 GAMMA = 0.2  # discount factor
 POI_VALUE=300
 EPSILON=0
@@ -465,7 +465,6 @@ class RoverAgent:
             direction = random.choice(best_actions)
         else:
             direction = random.choice(actions)
-        print_actions=True
         if print_actions:
             print(rewards)
             print(best_actions)
@@ -507,7 +506,7 @@ class RoverAgent:
         old_position=np.int16(np.round(position)+np.int16(old_position_delta))
         Q_max = max(self.policy[old_position[0] , old_position[1] , :])
         current_policy = self.policy[old_position[0], old_position[1], direction]
-        #print(self.policy[int(position[0]),int(position[1])])
+
         self.policy[old_position[0], old_position[1], direction] += ALPHA * (reward + GAMMA * Q_max - current_policy)
 
 

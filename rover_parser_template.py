@@ -4,8 +4,8 @@ import numpy as np
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 
-NUM_ITERATIONS = 3000
-EPOCHS = 5
+NUM_ITERATIONS = 10
+EPOCHS = 10
 EPSILON=rover_domain_python.EPSILON
 
 
@@ -63,7 +63,6 @@ if __name__ == "__main__":
         for j in range(NUM_ITERATIONS):
             # select actions
             actions, directions = choose_actions(sim, agents)
-            print( sim.rover_pos)
             # step forward the simulation
             _, local_rewards, done, _ = sim.step(actions)
             #if any(np.array(local_rewards)>0):
@@ -74,9 +73,11 @@ if __name__ == "__main__":
             update_policies(sim, agents, local_rewards, directions)
 
         rewards.append(sim.get_global_reward())
+        if sim.get_global_reward()>0:
+            print(agents[0].policy)
     plt.plot(rewards, '-o')
 
-    print(agents[0].policy)
+
     sim.viz()
     sim.render()
 
