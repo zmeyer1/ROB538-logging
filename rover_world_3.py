@@ -21,6 +21,8 @@ class newGridWorld:
         for agent in self.agents:
             agent.world=self
             agent.size=self.size
+        self.global_reward=0
+        
 
     def step(self, multiple_policies=True):
         # reset number of agents at target
@@ -39,15 +41,14 @@ class newGridWorld:
             directions.append(direction)
         for i, agent in enumerate(self.agents):
             reward = agent.get_reward()
+            self.global_reward+=reward
             agent.update_policy(old_locations[i][0],old_locations[i][1], directions[i], reward)
         for i, target in enumerate(target_list):
             target_location = target.location
             for j, agent in enumerate(self.agents):
                 if agent.location == target_location:
-
                     # need to reset after each step
                     target.num_agents_present += 1
-
                     if i not in agent.trees_visited:
                         agent.policy_location[(agent.location)] =len(agent.trees_visited)
                         agent.trees_visited.append(i)
@@ -412,9 +413,10 @@ def testing(eps):
     iterations=50
     epochs=1000
     epsilon = eps
+    global_rewards=[]
     for epoch in range(epochs):
+        gWorld.global_reward=0
         #reset path traveled and it tree is measured every epoch
-
         for agent in gWorld.agents:
             agent.path=[]
             # reset to a new random position
@@ -440,8 +442,9 @@ def testing(eps):
         # if epoch%10==0:
             # gWorld.viz()
         #green: visited target, red: unvisited target, blue: path increasing darkness withtime, yellow: start location w/agent number
-
-
+        global_rewards.append(gWorld.global_reward)
+    print(global_rewards)
+    plt.plot(global_rewards)
     gWorld.path_viz()
     plot_policy(agents[0],0)
     plot_policy(agents[0], 1)
