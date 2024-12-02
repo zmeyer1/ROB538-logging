@@ -6,10 +6,10 @@ from typing import Tuple
 
 import a_star
 
-ALPHA=0.5
+ALPHA=0.8
 GAMMA=0.5
 EPSILON=0.2
-REWARD_VALUE=300
+REWARD_VALUE=5
 class newGridWorld:
     def __init__(self, agents, size):
         self.agents = agents
@@ -51,7 +51,7 @@ class newGridWorld:
                     if i not in agent.trees_visited:
                         agent.policy_location[(agent.location)] =len(agent.trees_visited)
                         agent.trees_visited.append(i)
-                        target.reward_value *= 0.8
+                        target.reward_value *= 0.2
                     # trying to change value after collection
 
                     # target.fully_measured=True
@@ -398,9 +398,9 @@ def testing(eps):
     # keeping this here so we can use it to determine random points
     grid_size = (30,30)
 
-    num_targets = 5
+    num_targets = 20
     # two targets could be at the same location....eh, as grid size expands, this won't be likely
-    targets=targetsObj([(grid_size[0]//num_targets*i, grid_size[1]//num_targets*i) for i in range(num_targets)])
+    targets=targetsObj([((grid_size[0]//num_targets*i)+ random.randint(1, 10), (grid_size[1]//num_targets*i)+ random.randint(1, 10)) for i in range(num_targets)])
 
     num_agents = 3
     agents = [newAgent((random.choice(range(15,20)), random.choice(range(0,5))), targets) for _ in range(num_agents)]
@@ -409,11 +409,12 @@ def testing(eps):
     for agent in gWorld.agents:
         agent.start_policy()
         agent.policies.append(agent.policy)
-    iterations=200
+    iterations=50
     epochs=1000
+    epsilon = eps
     for epoch in range(epochs):
         #reset path traveled and it tree is measured every epoch
-        epsilon = eps
+
         for agent in gWorld.agents:
             agent.path=[]
             # reset to a new random position
@@ -430,10 +431,11 @@ def testing(eps):
         for iteration in range(iterations):
             if not gWorld.done:
                 gWorld.step()
-                epsilon*=.99
+
             if gWorld.done:
                 print(f"moves to solve: {iteration}")
                 break
+        epsilon *= .99
         #policy_translation(agents[0], True)
         # if epoch%10==0:
             # gWorld.viz()
