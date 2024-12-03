@@ -8,7 +8,7 @@ import a_star
 
 ALPHA=0.8
 GAMMA=0.5
-EPSILON=0.2
+EPSILON=0.3
 REWARD_VALUE=5
 STEP_PENALTY=-0.2
 class newGridWorld:
@@ -61,7 +61,7 @@ class newGridWorld:
                     # target.fully_measured=True
                     target.visits += 1
                     target.visitors[j] = 1 # unique visits
-                    if len(agent.trees_visited)<len(agent.policies):
+                    if len(agent.trees_visited)<len(agent.policies) and multiple_policies:
                         agent.policy=agent.policies[len(agent.trees_visited)]
                     else:
                         agent.start_policy()
@@ -400,15 +400,14 @@ def generate_random_point(grid_size: Tuple[int])-> Tuple[int]:
 
 def testing(eps):
     # keeping this here so we can use it to determine random points
-    grid_size = (20,20)
+    grid_size = (15,15)
 
-    num_targets = 2
+    num_targets = 3
     # two targets could be at the same location....eh, as grid size expands, this won't be likely
     targets=targetsObj([((grid_size[0]//num_targets*i)+ random.randint(1, 3), (grid_size[1]//num_targets*i)+ random.randint(1, 3)) for i in range(num_targets)])
 
     num_agents = 2
-    agents = [newAgent((random.choice(range(15,20)), random.choice(range(0,5))), targets) for _ in range(num_agents)]
-
+    agents = [newAgent((random.choice(range(10,14)), random.choice(range(0,5))), targets) for _ in range(num_agents)]
     gWorld = newGridWorld(agents, grid_size)
     for agent in gWorld.agents:
         agent.start_policy()
@@ -425,7 +424,7 @@ def testing(eps):
         for agent in gWorld.agents:
             agent.path=[]
             # reset to a new random position
-            agent.start_location = (random.choice(range(15,20)), random.choice(range(0,5)))
+            agent.start_location = (random.choice(range(10,14)), random.choice(range(0,5)))
             agent.location = agent.start_location
             agent.policy=agent.policies[0]
             agent.trees_visited=[]
@@ -437,7 +436,7 @@ def testing(eps):
         gWorld.done=False
         for iteration in range(iterations):
             if not gWorld.done:
-                gWorld.step()
+                gWorld.step(multiple_policies=False)
 
             if gWorld.done:
                 print(f"moves to solve: {iteration}")
@@ -451,7 +450,7 @@ def testing(eps):
         global_rewards.append(gWorld.global_reward)
     #print(reward_strings)
     plt.plot(global_rewards)
-    plt.title('Global Rewards vs Epochs Using A* Propagation and Multiple Policies')
+    plt.title('Global Rewards vs Epochs Using A* Propagation and One Policy')
     plt.xlabel('Epochs')
     plt.ylabel('Global Reward')
     gWorld.path_viz()
