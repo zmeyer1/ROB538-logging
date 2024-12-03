@@ -10,6 +10,7 @@ ALPHA=0.8
 GAMMA=0.5
 EPSILON=0.2
 REWARD_VALUE=5
+STEP_PENALTY=-0.2
 class newGridWorld:
     def __init__(self, agents, size):
         self.agents = agents
@@ -65,6 +66,7 @@ class newGridWorld:
                     else:
                         agent.start_policy()
                         agent.policies.append(agent.policy)
+        self.global_reward+=STEP_PENALTY
         if all([all(t.visitors) for t in target_list]):
             self.done = True
 
@@ -253,6 +255,8 @@ class newAgent:
             #     print('visited: ', i not in self.trees_visited)
             if target.location == (x,y) and i not in self.trees_visited:
                 reward+=target.reward_value
+            else:
+                reward+=STEP_PENALTY
 
         return reward
 
@@ -410,7 +414,7 @@ def testing(eps):
         agent.start_policy()
         agent.policies.append(agent.policy)
     iterations=80
-    epochs=500
+    epochs=1000
     epsilon = eps
     global_rewards=[]
     reward_strings=[]
@@ -445,9 +449,11 @@ def testing(eps):
             # gWorld.viz()
         #green: visited target, red: unvisited target, blue: path increasing darkness withtime, yellow: start location w/agent number
         global_rewards.append(gWorld.global_reward)
-
-    print(reward_strings)
+    #print(reward_strings)
     plt.plot(global_rewards)
+    plt.title('Global Rewards vs Epochs Using A* Propagation and Multiple Policies')
+    plt.xlabel('Epochs')
+    plt.ylabel('Global Reward')
     gWorld.path_viz()
     # plot_policy(agents[0],0)
     # plot_policy(agents[0], 1)
