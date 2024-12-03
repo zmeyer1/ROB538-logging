@@ -22,7 +22,8 @@ class newGridWorld:
             agent.world=self
             agent.size=self.size
         self.global_reward=0
-        
+        self.reward_string=' '
+
 
     def step(self, multiple_policies=True):
         # reset number of agents at target
@@ -39,14 +40,15 @@ class newGridWorld:
             #moves agent and gets direction moved
             direction=agent.move_from_policy()
             directions.append(direction)
-        for i, agent in enumerate(self.agents):
-            reward = agent.get_reward()
-            self.global_reward+=reward
-            agent.update_policy(old_locations[i][0],old_locations[i][1], directions[i], reward)
         for i, target in enumerate(target_list):
             target_location = target.location
             for j, agent in enumerate(self.agents):
+                reward = agent.get_reward()
+                agent.update_policy(old_locations[j][0], old_locations[j][1], directions[j], reward)
                 if agent.location == target_location:
+                    self.global_reward += reward
+                    if reward > 0:
+                        self.reward_string += str(reward) + ', '
                     # need to reset after each step
                     target.num_agents_present += 1
                     if i not in agent.trees_visited:
@@ -251,8 +253,7 @@ class newAgent:
             #     print('visited: ', i not in self.trees_visited)
             if target.location == (x,y) and i not in self.trees_visited:
                 reward+=target.reward_value
-            else:
-                reward+=0
+
         return reward
 
     #check reward at next location without actually changing x,y
@@ -375,8 +376,6 @@ def plot_policy(agent, policy_index):
                         plt.arrow(x-0.2, y, -1, 0, shape='full', lw=0, color='k', length_includes_head=True, head_width=.25, head_starts_at_zero=True)
                     elif direction==3:
                         plt.arrow(x+0.2, y, 1, 0, shape='full', lw=0, color='k', length_includes_head=True, head_width=.25, head_starts_at_zero=True)
-    print(np.max(max_policy))
-    print(np.min(max_policy))
     for target in agent.targets.targets_list:
         plt.plot(target.location[0], target.location[1], 'ro', markersize=8)
     plt.imshow(max_policy, cmap='Purples', interpolation='nearest')
@@ -397,25 +396,27 @@ def generate_random_point(grid_size: Tuple[int])-> Tuple[int]:
 
 def testing(eps):
     # keeping this here so we can use it to determine random points
-    grid_size = (30,30)
+    grid_size = (20,20)
 
-    num_targets = 20
+    num_targets = 2
     # two targets could be at the same location....eh, as grid size expands, this won't be likely
-    targets=targetsObj([((grid_size[0]//num_targets*i)+ random.randint(1, 10), (grid_size[1]//num_targets*i)+ random.randint(1, 10)) for i in range(num_targets)])
+    targets=targetsObj([((grid_size[0]//num_targets*i)+ random.randint(1, 3), (grid_size[1]//num_targets*i)+ random.randint(1, 3)) for i in range(num_targets)])
 
-    num_agents = 3
+    num_agents = 2
     agents = [newAgent((random.choice(range(15,20)), random.choice(range(0,5))), targets) for _ in range(num_agents)]
 
     gWorld = newGridWorld(agents, grid_size)
     for agent in gWorld.agents:
         agent.start_policy()
         agent.policies.append(agent.policy)
-    iterations=50
-    epochs=1000
+    iterations=80
+    epochs=500
     epsilon = eps
     global_rewards=[]
+    reward_strings=[]
     for epoch in range(epochs):
         gWorld.global_reward=0
+        gWorld.reward_string=' '
         #reset path traveled and it tree is measured every epoch
         for agent in gWorld.agents:
             agent.path=[]
@@ -436,6 +437,7 @@ def testing(eps):
 
             if gWorld.done:
                 print(f"moves to solve: {iteration}")
+                reward_strings.append(gWorld.reward_string)
                 break
         epsilon *= .99
         #policy_translation(agents[0], True)
@@ -443,13 +445,14 @@ def testing(eps):
             # gWorld.viz()
         #green: visited target, red: unvisited target, blue: path increasing darkness withtime, yellow: start location w/agent number
         global_rewards.append(gWorld.global_reward)
-    print(global_rewards)
+
+    print(reward_strings)
     plt.plot(global_rewards)
     gWorld.path_viz()
-    plot_policy(agents[0],0)
-    plot_policy(agents[0], 1)
-    plot_policy(agents[0],2)
-    plot_policy(agents[0], 3)
+    # plot_policy(agents[0],0)
+    # plot_policy(agents[0], 1)
+    # plot_policy(agents[0],2)
+    # plot_policy(agents[0], 3)
     policy_translation(agents[0], True)
 
 
