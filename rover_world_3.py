@@ -459,11 +459,11 @@ def testing(eps):
     grid_size = (15,15)
 
     rover_start_area = (grid_size[0]//4, grid_size[1]//4)
-    num_targets = 5
+    num_targets = 8
     # two targets could be at the same location....eh, as grid size expands, this won't be likely
     targets=targetsObj(generate_trees(grid_size, num_targets, rover_start_area))
 
-    num_agents = 3
+    num_agents = 4
     agents = [newAgent(generate_random_point(rover_start_area), targets) for _ in range(num_agents)]
     gWorld = newGridWorld(agents, grid_size)
     for agent in gWorld.agents:
