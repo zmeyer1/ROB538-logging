@@ -8,8 +8,8 @@ import a_star
 
 ALPHA=0.8
 GAMMA=0.5
-EPSILON=0.3
-REWARD_VALUE=5
+EPSILON=0.1
+REWARD_VALUE=30
 STEP_PENALTY=-0.2
 class newGridWorld:
     def __init__(self, agents, size):
@@ -113,7 +113,7 @@ class newGridWorld:
             color = colors[i%len(colors)]
             path = np.array(agent.path)
             ofst =i * div
-            plt.plot(path[0,0], path[0,1], color+'o', markersize=15)
+            plt.plot(path[0,0], path[0,1], color+'o', markersize=10)
             plt.plot(path[:,0]+ofst, path[:,1]+ofst, colors[i%len(colors)]+"--")
         
         for target in self.targets.targets_list:
@@ -288,12 +288,12 @@ class newAgent:
         x_next, y_next = self.find_next_position(x,y,direction)
         if reward > 0:
             self.policy[y,x][direction] += reward
-            self.propogate_reward_along_path()
+            self.propogate_reward_along_path(reward)
         else:
             # reward is empty
             self.policy[y][x][direction] += ALPHA * (GAMMA*max(self.policy[y_next,x_next]) - self.policy[y,x][direction])
 
-    def propogate_reward_along_path(self):
+    def propogate_reward_along_path(self, true_reward):
         # uses A* to move along best path, starting at current location
         path = a_star.a_star_search(np.zeros(self.size), self.location, self.start_location)
         if path is None:
@@ -307,8 +307,13 @@ class newAgent:
             else:
                 print(f"Path moved strangely to {x_next,y_next} from {x,y}!")
                 exit(1)
-            reward = self.policy[y,x][direction] + ALPHA * (GAMMA*max(self.policy[y_next,x_next]) - self.policy[y,x][direction])
-            self.policy[y][x][direction]=reward
+            if true_reward > 0:
+                self.policy[y,x][direction] = true_reward
+                true_reward = 0
+            else:
+                reward = self.policy[y,x][direction] + ALPHA * (GAMMA*max(self.policy[y_next,x_next]) - self.policy[y,x][direction])
+                self.policy[y][x][direction]=reward
+                assert self.policy[y][x][direction] == reward
             x_next, y_next = x,y
             
 
@@ -373,20 +378,33 @@ def plot_policy(agent, policy_index):
                 delta_y = 0
                 for direction in directions:
                     if direction==0:
-                        plt.arrow(x, y-0.2, 0, -1, shape='full', lw=0, color='k', length_includes_head=True, head_width=.25, head_starts_at_zero=True)
+                        x_offset = 0
+                        y_offset = -0.1
+                        x_width = 0
+                        y_width = -0.35
                     elif direction==1:
-                        plt.arrow(x, y+0.2, 0, 1, shape='full', lw=0, color='k', length_includes_head=True, head_width=.25, head_starts_at_zero=True)
+                        x_offset = 0
+                        y_offset = 0.1
+                        x_width = 0
+                        y_width = 0.35
                     elif direction==2:
-                        plt.arrow(x-0.2, y, -1, 0, shape='full', lw=0, color='k', length_includes_head=True, head_width=.25, head_starts_at_zero=True)
+                        x_offset = -0.1
+                        y_offset = 0
+                        x_width = -0.35
+                        y_width = 0
                     elif direction==3:
-                        plt.arrow(x+0.2, y, 1, 0, shape='full', lw=0, color='k', length_includes_head=True, head_width=.25, head_starts_at_zero=True)
+                        x_offset = 0.1
+                        y_offset = 0
+                        x_width = 0.35
+                        y_width = 0
+                    plt.annotate('',xy=(x+x_offset+x_width,y+y_offset+y_width),xytext=(x+x_offset,y+y_offset),arrowprops={'arrowstyle':'->'})
+
     for target in agent.targets.targets_list:
         plt.plot(target.location[0], target.location[1], 'ro', markersize=8)
+    plt.plot(agent.start_location[0], agent.start_location[1], 'mo', markersize=8)
     plt.imshow(max_policy, cmap='Purples', interpolation='nearest')
     plt.title('Agent Policy')
     plt.show()
-
-    
 
 
 def generate_random_point(grid_size: Tuple[int])-> Tuple[int]:
@@ -397,17 +415,56 @@ def generate_random_point(grid_size: Tuple[int])-> Tuple[int]:
     return random.choice(range(grid_size[0])), random.choice(range(grid_size[1]))
 
 
+def is_valid_tree(pt, grid, exclusion_zone):
+    w,h  = grid
+    if pt[0] < 0 or pt[1] < 0:
+        return False
+    if pt[0] >= w or pt[1] >= h:
+        return False
+    if exclusion_zone:
+        if pt[0] < exclusion_zone[0] and pt[1] < exclusion_zone[1]:
+            return False
+    return True
+
+
+def generate_trees(grid_size, num_trees, exclusion_zone = None) -> Tuple[int, int]:
+
+
+    # distribute trees evenly along the space, adding randomness and redrawing for the exclusion zone
+    trees_placed = 0
+    tree_positions = []
+    w,h = grid_size
+    squared_distribution = int(np.sqrt(num_trees))
+    x_positions = [w//squared_distribution*i for i in range(squared_distribution)]
+    y_positions = [h//squared_distribution*i for i in range(squared_distribution)]
+    for x_pos in x_positions:
+        for y_pos in y_positions:
+            position = (x_pos + random.randint(-2,2), y_pos + random.randint(-2,2))
+            if is_valid_tree(position, grid_size, exclusion_zone):
+                tree_positions.append(position)
+                trees_placed += 1
+
+    while trees_placed < num_trees:
+        # take a guess at a location
+        position = (random.choice(range(grid_size[0])), random.choice(range(grid_size[1])))
+        if is_valid_tree(position, grid_size, exclusion_zone) and position not in tree_positions:
+            tree_positions.append(position)
+            trees_placed += 1
+
+    return tree_positions
+    
 
 def testing(eps):
     # keeping this here so we can use it to determine random points
     grid_size = (15,15)
 
-    num_targets = 3
+    rover_start_area = (grid_size[0]//4, grid_size[1]//4)
+    num_targets = 5
     # two targets could be at the same location....eh, as grid size expands, this won't be likely
-    targets=targetsObj([((grid_size[0]//num_targets*i)+ random.randint(1, 3), (grid_size[1]//num_targets*i)+ random.randint(1, 3)) for i in range(num_targets)])
+    targets=targetsObj(generate_trees(grid_size, num_targets, rover_start_area))
 
-    num_agents = 2
-    agents = [newAgent((random.choice(range(10,14)), random.choice(range(0,5))), targets) for _ in range(num_agents)]
+    num_agents = 3
+    agents = [newAgent(generate_random_point(rover_start_area), targets) for _ in range(num_agents)]
     gWorld = newGridWorld(agents, grid_size)
     for agent in gWorld.agents:
         agent.start_policy()
@@ -424,7 +481,7 @@ def testing(eps):
         for agent in gWorld.agents:
             agent.path=[]
             # reset to a new random position
-            agent.start_location = (random.choice(range(10,14)), random.choice(range(0,5)))
+            agent.start_location = generate_random_point(rover_start_area)
             agent.location = agent.start_location
             agent.policy=agent.policies[0]
             agent.trees_visited=[]
@@ -436,7 +493,7 @@ def testing(eps):
         gWorld.done=False
         for iteration in range(iterations):
             if not gWorld.done:
-                gWorld.step(multiple_policies=False)
+                gWorld.step()
 
             if gWorld.done:
                 print(f"moves to solve: {iteration}")
@@ -455,9 +512,8 @@ def testing(eps):
     plt.ylabel('Global Reward')
     gWorld.path_viz()
     # plot_policy(agents[0],0)
-    # plot_policy(agents[0], 1)
-    # plot_policy(agents[0],2)
-    # plot_policy(agents[0], 3)
+    # plot_policy(agents[0],1)
+
     policy_translation(agents[0], True)
 
 
